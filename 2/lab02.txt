@@ -1,0 +1,168 @@
+﻿-- не принята
+
+Дьяков Михаил
+Б07-302
+Вариант 7
+
+--Л. р. №2. Выборка данных.
+--Создать упорядоченные списки.
+
+--1. Единоличные владельцы помещений (доля которых равна 1) с указанием адреса квартиры, которой он владеет.
+SELECT o.full_name, s.street_name, b.house_number, v.apartment_number
+FROM v7_ownership v
+JOIN v7_owners o ON o.owner_id = v.owner_id
+JOIN v7_buildings b ON b.building_id = v.building_id
+JOIN v7_streets s ON s.street_id = b.street_id
+WHERE v.ownership_share = 1
+  AND v.started_on <= CURRENT_DATE
+  AND (v.ended_on IS NULL OR v.ended_on > CURRENT_DATE)
+ORDER BY o.full_name, s.street_name, b.house_number, v.apartment_number;
+--+
+
+--2. Собственники с перечнем их документов (в том числе те, у которых нет документов).
+SELECT o.full_name, o.birth_date, d.document_type, d.document_series,
+       d.document_number, d.issued_by, d.issued_on
+FROM v7_owners o
+LEFT JOIN v7_documents d ON d.owner_id = o.owner_id
+ORDER BY o.full_name, o.owner_id, d.document_type, d.document_series, d.document_number;
+--+
+
+--3. Квартиры, в числе собственников которых в настоящее время есть люди старше 70-ти лет.
+SELECT DISTINCT s.street_name, b.house_number, v.apartment_number
+FROM v7_ownership v
+JOIN v7_owners o ON o.owner_id = v.owner_id
+JOIN v7_buildings b ON b.building_id = v.building_id
+JOIN v7_streets s ON s.street_id = b.street_id
+WHERE o.birth_date < ADD_MONTHS(TRUNC(CURRENT_DATE), -70 * 12)
+  AND v.started_on <= CURRENT_DATE
+  AND (v.ended_on IS NULL OR v.ended_on > CURRENT_DATE)
+ORDER BY s.street_name, b.house_number, v.apartment_number;
+--+
+
+--4. Квартиры, у которых в настоящее время нет собственников.
+SELECT s.street_name, b.house_number, a.apartment_number
+FROM (SELECT DISTINCT building_id, apartment_number FROM v7_ownership) a
+JOIN v7_buildings b ON b.building_id = a.building_id
+JOIN v7_streets s ON s.street_id = b.street_id
+WHERE NOT EXISTS (
+ SELECT 1
+ FROM v7_ownership v
+ WHERE v.building_id = a.building_id
+   AND v.apartment_number = a.apartment_number
+   AND v.started_on <= CURRENT_DATE
+   AND (v.ended_on IS NULL OR v.ended_on > CURRENT_DATE)
+)
+ORDER BY s.street_name, b.house_number, a.apartment_number;
+--+
+
+--5. Проверить, что общая доля владения квартирой не превышает 1 (выдать нарушения).
+SELECT s.street_name, b.house_number, v.apartment_number,
+       SUM(v.ownership_share) AS total_share
+FROM v7_ownership v
+JOIN v7_buildings b ON b.building_id = v.building_id
+JOIN v7_streets s ON s.street_id = b.street_id
+WHERE v.started_on <= CURRENT_DATE
+  AND (v.ended_on IS NULL OR v.ended_on > CURRENT_DATE)
+GROUP BY s.street_name, b.house_number, v.apartment_number
+HAVING SUM(v.ownership_share) > 1
+ORDER BY s.street_name, b.house_number, v.apartment_number;
+--+
+
+--6. Один из запросов написать двумя способами и объяснить, какой из вариантов будет работать быстрее и почему.
+--Запрос 4. Первый способ — NOT EXISTS, второй способ — GROUP BY и HAVING.
+
+EXPLAIN PLAN SET STATEMENT_ID = 'V7_NOT_EXISTS' FOR
+SELECT s.street_name, b.house_number, a.apartment_number
+FROM (SELECT DISTINCT building_id, apartment_number FROM v7_ownership) a
+JOIN v7_buildings b ON b.building_id = a.building_id
+JOIN v7_streets s ON s.street_id = b.street_id
+WHERE NOT EXISTS (
+ SELECT 1
+ FROM v7_ownership v
+ WHERE v.building_id = a.building_id
+   AND v.apartment_number = a.apartment_number
+   AND v.started_on <= CURRENT_DATE
+   AND (v.ended_on IS NULL OR v.ended_on > CURRENT_DATE)
+)
+ORDER BY s.street_name, b.house_number, a.apartment_number;
+
+SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY('PLAN_TABLE', 'V7_NOT_EXISTS', 'TYPICAL'));
+
+SELECT s.street_name, b.house_number, v.apartment_number
+FROM v7_ownership v
+JOIN v7_buildings b ON b.building_id = v.building_id
+JOIN v7_streets s ON s.street_id = b.street_id
+GROUP BY s.street_name, b.house_number, v.apartment_number
+HAVING SUM(CASE WHEN v.started_on <= CURRENT_DATE
+                    AND (v.ended_on IS NULL OR v.ended_on > CURRENT_DATE)
+                THEN 1 ELSE 0 END) = 0
+ORDER BY s.street_name, b.house_number, v.apartment_number;
+
+EXPLAIN PLAN SET STATEMENT_ID = 'V7_GROUP_BY' FOR
+SELECT s.street_name, b.house_number, v.apartment_number
+FROM v7_ownership v
+JOIN v7_buildings b ON b.building_id = v.building_id
+JOIN v7_streets s ON s.street_id = b.street_id
+GROUP BY s.street_name, b.house_number, v.apartment_number
+HAVING SUM(CASE WHEN v.started_on <= CURRENT_DATE
+                    AND (v.ended_on IS NULL OR v.ended_on > CURRENT_DATE)
+                THEN 1 ELSE 0 END) = 0
+ORDER BY s.street_name, b.house_number, v.apartment_number;
+--+
+
+SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY('PLAN_TABLE', 'V7_GROUP_BY', 'TYPICAL'));
+
+/*
+В таблице владения 9 записей.
+Между запросами данные, индексы и статистика не изменялись.
+Оба запроса вернули одну строку: Ленина, дом 10, квартира 3.
+
+Первый способ, NOT EXISTS:
+Plan hash value: 1393804148
+
+----------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation			| Name		  | Starts | E-Rows | A-Rows |	 A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+----------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT		|		  |	 1 |	    |	   1 |00:00:00.01 |	 25 |	    |	    |	       |
+|   1 |  SORT ORDER BY			|		  |	 1 |	  9 |	   1 |00:00:00.01 |	 25 |  2048 |  2048 | 2048  (0)|
+|*  2 |   HASH JOIN ANTI		|		  |	 1 |	  9 |	   1 |00:00:00.01 |	 25 |  1265K|  1265K|  901K (0)|
+|*  3 |    HASH JOIN			|		  |	 1 |	  9 |	   5 |00:00:00.01 |	 18 |  1506K|  1506K|  621K (0)|
+|   4 |     NESTED LOOPS		|		  |	 1 |	  9 |	   5 |00:00:00.01 |	 11 |	    |	    |	       |
+|   5 |      NESTED LOOPS		|		  |	 1 |	  9 |	   5 |00:00:00.01 |	  6 |	    |	    |	       |
+|   6 |       VIEW			|		  |	 1 |	  9 |	   5 |00:00:00.01 |	  4 |	    |	    |	       |
+|   7 |        HASH UNIQUE		|		  |	 1 |	  9 |	   5 |00:00:00.01 |	  4 |  1097K|  1097K|	       |
+|   8 | 	INDEX FAST FULL SCAN	| V7_OWNERSHIP_UQ |	 1 |	  9 |	   9 |00:00:00.01 |	  4 |	    |	    |	       |
+|*  9 |       INDEX UNIQUE SCAN 	| SYS_C008657	  |	 5 |	  1 |	   5 |00:00:00.01 |	  2 |	    |	    |	       |
+|  10 |      TABLE ACCESS BY INDEX ROWID| V7_BUILDINGS	  |	 5 |	  1 |	   5 |00:00:00.01 |	  5 |	    |	    |	       |
+|  11 |     TABLE ACCESS FULL		| V7_STREETS	  |	 1 |	  2 |	   2 |00:00:00.01 |	  7 |	    |	    |	       |
+|* 12 |    TABLE ACCESS FULL		| V7_OWNERSHIP	  |	 1 |	  8 |	   8 |00:00:00.01 |	  7 |	    |	    |	       |
+----------------------------------------------------------------------------------------------------------------------------------------
+
+Второй способ, GROUP BY и HAVING:
+Plan hash value: 3434660658
+
+-------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation			| Name	       | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT		|	       |      1 |	 |	1 |00:00:00.01 |      18 |	 |	 |	    |
+|*  1 |  FILTER 			|	       |      1 |	 |	1 |00:00:00.01 |      18 |	 |	 |	    |
+|   2 |   SORT GROUP BY 		|	       |      1 |      9 |	5 |00:00:00.01 |      18 |  2048 |  2048 | 2048  (0)|
+|*  3 |    HASH JOIN			|	       |      1 |      9 |	9 |00:00:00.01 |      18 |  1376K|  1376K|  546K (0)|
+|   4 |     NESTED LOOPS		|	       |      1 |      2 |	2 |00:00:00.01 |      11 |	 |	 |	    |
+|   5 |      NESTED LOOPS		|	       |      1 |      2 |	2 |00:00:00.01 |       9 |	 |	 |	    |
+|   6 |       TABLE ACCESS FULL 	| V7_BUILDINGS |      1 |      2 |	2 |00:00:00.01 |       7 |	 |	 |	    |
+|*  7 |       INDEX UNIQUE SCAN 	| SYS_C008653  |      2 |      1 |	2 |00:00:00.01 |       2 |	 |	 |	    |
+|   8 |      TABLE ACCESS BY INDEX ROWID| V7_STREETS   |      2 |      1 |	2 |00:00:00.01 |       2 |	 |	 |	    |
+|   9 |     TABLE ACCESS FULL		| V7_OWNERSHIP |      1 |      9 |	9 |00:00:00.01 |       7 |	 |	 |	    |
+-------------------------------------------------------------------------------------------------------------------------------------
+
+
+На этих данных вариант GROUP BY с HAVING экономнее по логическим чтениям.
+Время A-Time у обоих запросов отображается одинаково 00:00:00.01.
+Поэтому измерение не показало различия в скорости на 9 записях.
+По объёму выполненной работы предпочтителен второй способ, но утверждать
+что он быстрее по измеренному времени по этому запуску нельзя.
+*/
+-- запросы надо сравнивать в одинаковых условиях (один объем данных, одни и те же индексы)
+
+

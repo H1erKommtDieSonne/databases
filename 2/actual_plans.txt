@@ -1,0 +1,135 @@
+
+Session altered.
+
+
+Session altered.
+
+
+  COUNT(*)
+----------
+	 9
+
+1 row selected.
+
+
+no rows selected
+
+
+STREET_NAME
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+HOUSE_NUMBER						     APARTMENT_NUMBER
+------------------------------------------------------------ ----------------
+Ленина
+10									    3
+
+
+1 row selected.
+
+
+PLAN_TABLE_OUTPUT
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+SQL_ID	7qzgfc0dh67rx, child number 1
+-------------------------------------
+SELECT /*+ GATHER_PLAN_STATISTICS */ s.street_name, b.house_number,
+a.apartment_number FROM (SELECT DISTINCT building_id, apartment_number
+FROM v7_ownership) a JOIN v7_buildings b ON b.building_id =
+a.building_id JOIN v7_streets s ON s.street_id = b.street_id WHERE NOT
+EXISTS (  SELECT 1  FROM v7_ownership v  WHERE v.building_id =
+a.building_id	 AND v.apartment_number = a.apartment_number	AND
+v.started_on <= CURRENT_DATE	AND (v.ended_on IS NULL OR v.ended_on >
+CURRENT_DATE) ) ORDER BY s.street_name, b.house_number,
+a.apartment_number
+
+Plan hash value: 1393804148
+
+----------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation			| Name		  | Starts | E-Rows | A-Rows |	 A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+----------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT		|		  |	 1 |	    |	   1 |00:00:00.01 |	 25 |	    |	    |	       |
+|   1 |  SORT ORDER BY			|		  |	 1 |	  9 |	   1 |00:00:00.01 |	 25 |  2048 |  2048 | 2048  (0)|
+|*  2 |   HASH JOIN ANTI		|		  |	 1 |	  9 |	   1 |00:00:00.01 |	 25 |  1265K|  1265K|  901K (0)|
+|*  3 |    HASH JOIN			|		  |	 1 |	  9 |	   5 |00:00:00.01 |	 18 |  1506K|  1506K|  621K (0)|
+|   4 |     NESTED LOOPS		|		  |	 1 |	  9 |	   5 |00:00:00.01 |	 11 |	    |	    |	       |
+|   5 |      NESTED LOOPS		|		  |	 1 |	  9 |	   5 |00:00:00.01 |	  6 |	    |	    |	       |
+|   6 |       VIEW			|		  |	 1 |	  9 |	   5 |00:00:00.01 |	  4 |	    |	    |	       |
+|   7 |        HASH UNIQUE		|		  |	 1 |	  9 |	   5 |00:00:00.01 |	  4 |  1097K|  1097K|	       |
+|   8 | 	INDEX FAST FULL SCAN	| V7_OWNERSHIP_UQ |	 1 |	  9 |	   9 |00:00:00.01 |	  4 |	    |	    |	       |
+|*  9 |       INDEX UNIQUE SCAN 	| SYS_C008657	  |	 5 |	  1 |	   5 |00:00:00.01 |	  2 |	    |	    |	       |
+|  10 |      TABLE ACCESS BY INDEX ROWID| V7_BUILDINGS	  |	 5 |	  1 |	   5 |00:00:00.01 |	  5 |	    |	    |	       |
+|  11 |     TABLE ACCESS FULL		| V7_STREETS	  |	 1 |	  2 |	   2 |00:00:00.01 |	  7 |	    |	    |	       |
+|* 12 |    TABLE ACCESS FULL		| V7_OWNERSHIP	  |	 1 |	  8 |	   8 |00:00:00.01 |	  7 |	    |	    |	       |
+----------------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("V"."BUILDING_ID"="A"."BUILDING_ID" AND "V"."APARTMENT_NUMBER"="A"."APARTMENT_NUMBER")
+   3 - access("S"."STREET_ID"="B"."STREET_ID")
+   9 - access("B"."BUILDING_ID"="A"."BUILDING_ID")
+  12 - filter(("V"."STARTED_ON"<=CURRENT_DATE AND ("V"."ENDED_ON" IS NULL OR "V"."ENDED_ON">CURRENT_DATE)))
+
+Note
+-----
+   - dynamic statistics used: dynamic sampling (level=2)
+   - this is an adaptive plan
+
+
+45 rows selected.
+
+
+STREET_NAME
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+HOUSE_NUMBER						     APARTMENT_NUMBER
+------------------------------------------------------------ ----------------
+Ленина
+10									    3
+
+
+1 row selected.
+
+
+PLAN_TABLE_OUTPUT
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+SQL_ID	56bww6dr2xn93, child number 1
+-------------------------------------
+SELECT /*+ GATHER_PLAN_STATISTICS */ s.street_name, b.house_number,
+v.apartment_number FROM v7_ownership v JOIN v7_buildings b ON
+b.building_id = v.building_id JOIN v7_streets s ON s.street_id =
+b.street_id GROUP BY s.street_name, b.house_number, v.apartment_number
+HAVING SUM(CASE WHEN v.started_on <= CURRENT_DATE
+AND (v.ended_on IS NULL OR v.ended_on > CURRENT_DATE)
+THEN 1 ELSE 0 END) = 0 ORDER BY s.street_name, b.house_number,
+v.apartment_number
+
+Plan hash value: 3434660658
+
+-------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation			| Name	       | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT		|	       |      1 |	 |	1 |00:00:00.01 |      18 |	 |	 |	    |
+|*  1 |  FILTER 			|	       |      1 |	 |	1 |00:00:00.01 |      18 |	 |	 |	    |
+|   2 |   SORT GROUP BY 		|	       |      1 |      9 |	5 |00:00:00.01 |      18 |  2048 |  2048 | 2048  (0)|
+|*  3 |    HASH JOIN			|	       |      1 |      9 |	9 |00:00:00.01 |      18 |  1376K|  1376K|  546K (0)|
+|   4 |     NESTED LOOPS		|	       |      1 |      2 |	2 |00:00:00.01 |      11 |	 |	 |	    |
+|   5 |      NESTED LOOPS		|	       |      1 |      2 |	2 |00:00:00.01 |       9 |	 |	 |	    |
+|   6 |       TABLE ACCESS FULL 	| V7_BUILDINGS |      1 |      2 |	2 |00:00:00.01 |       7 |	 |	 |	    |
+|*  7 |       INDEX UNIQUE SCAN 	| SYS_C008653  |      2 |      1 |	2 |00:00:00.01 |       2 |	 |	 |	    |
+|   8 |      TABLE ACCESS BY INDEX ROWID| V7_STREETS   |      2 |      1 |	2 |00:00:00.01 |       2 |	 |	 |	    |
+|   9 |     TABLE ACCESS FULL		| V7_OWNERSHIP |      1 |      9 |	9 |00:00:00.01 |       7 |	 |	 |	    |
+-------------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter(SUM(CASE	WHEN ("V"."STARTED_ON"<=CURRENT_DATE AND ("V"."ENDED_ON" IS NULL OR "V"."ENDED_ON">CURRENT_DATE))
+	      THEN 1 ELSE 0 END )=0)
+   3 - access("B"."BUILDING_ID"="V"."BUILDING_ID")
+   7 - access("S"."STREET_ID"="B"."STREET_ID")
+
+Note
+-----
+   - dynamic statistics used: dynamic sampling (level=2)
+
+
+40 rows selected.
+

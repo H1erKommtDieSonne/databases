@@ -1,0 +1,23 @@
+INSERT INTO v7_streets VALUES (1, 'Ленина');
+INSERT INTO v7_streets VALUES (2, 'Садовая');
+INSERT INTO v7_buildings VALUES (1, 1, '10');
+INSERT INTO v7_buildings VALUES (2, 2, '5А');
+INSERT INTO v7_owners VALUES (1, 'Иванов Иван Иванович', DATE '1940-05-12', 'M');
+INSERT INTO v7_owners VALUES (2, 'Петрова Анна Сергеевна', DATE '1985-03-20', 'F');
+INSERT INTO v7_owners VALUES (3, 'Сидоров Пётр Андреевич', DATE '1990-07-15', 'M');
+INSERT INTO v7_owners VALUES (4, 'Смирнова Мария Ивановна', DATE '1970-02-10', 'F');
+INSERT INTO v7_documents VALUES (1, 1, 'Паспорт', '4501', '100001', 'ОВД города Москвы', DATE '2001-06-10');
+INSERT INTO v7_documents VALUES (2, 2, 'Паспорт', '4505', '100002', 'ОВД города Москвы', DATE '2005-04-10');
+INSERT INTO v7_documents VALUES (3, 4, 'Паспорт', '4515', '100003', 'УФМС России', DATE '2015-03-20');
+INSERT INTO v7_documents VALUES (4, 4, 'Заграничный паспорт', '75', '100000004', 'МВД России', DATE '2022-04-01');
+INSERT INTO v7_ownership VALUES (1, 1, 1, 1, 1, DATE '2000-01-01', NULL);
+INSERT INTO v7_ownership VALUES (2, 2, 1, 2, 0.5, DATE '2010-01-01', NULL);
+INSERT INTO v7_ownership VALUES (3, 3, 1, 2, 0.5, DATE '2010-01-01', NULL);
+INSERT INTO v7_ownership VALUES (4, 4, 1, 3, 1, DATE '2010-01-01', DATE '2020-01-01');
+INSERT INTO v7_ownership VALUES (5, 2, 2, 1, 0.25, DATE '2012-01-01', NULL);
+INSERT INTO v7_ownership VALUES (6, 2, 2, 1, 0.3, DATE '2014-01-01', NULL);
+INSERT INTO v7_ownership VALUES (7, 4, 2, 1, 0.45, DATE '2014-01-01', NULL);
+
+INSERT INTO v7_ownership VALUES (8, 3, 2, 2, 0.7, DATE '2015-01-01', NULL);
+INSERT INTO v7_ownership VALUES (9, 4, 2, 2, 0.6, DATE '2015-01-01', NULL);
+COMMIT;
